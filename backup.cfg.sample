@@ -1,0 +1,16 @@
+[backups]
+
+email_address = user@domain.com
+aws_access_key_id = xxxxxx
+aws_secret_access_key = xxxxxx
+
+region = us-west-2
+instance_id = i-xxxxxx
+
+rsync_path = /usr/bin/rsync
+remote_username = backups
+backup_source = /
+backup_dest = /backups/
+
+sendmail = /usr/sbin/sendmail
+subject = Backup Results
