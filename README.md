@@ -15,7 +15,8 @@ Backup machine to EC2/EBS
 
 
 You need to have an instance created (micro) with rsync and ssh allowed
-with the key from your source machine.
+with the key from your source machine. It also needs to have an EBS volume
+available with enough space for a mirror image backup.
 
 Here's what the mail log reports after a successful run:
 
