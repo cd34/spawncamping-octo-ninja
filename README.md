@@ -10,7 +10,7 @@ Backup machine to EC2/EBS
     cd tools
     python setup.py develop
     cp backup.cfg.sample backup.cfg
-    edit backup.cfg and fill in approproiate values
+    edit backup.cfg and fill in appropriate values
 
 
 
