@@ -121,7 +121,8 @@ def main():
 
 if __name__ == '__main__':
     config = ConfigParser.ConfigParser()
-    config.readfp(open('backup.cfg'))
+    config.readfp(open(os.path.join('/'.join(sys.argv[0].split('/')[:-1]),
+        'backup.cfg')))
 
     try:
         main()
