@@ -48,7 +48,7 @@ def wait_for_instance(instance, log):
             return False
     # even though status is running, machine isn't always accessible
     # immediately
-    time.sleep(15)
+    time.sleep(60)
     return True
 
 def main():
