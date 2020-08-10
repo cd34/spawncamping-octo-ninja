@@ -134,8 +134,8 @@ def main():
         logger(log, "Running rsync: {0}".format(rsync_command))
         os.system(rsync_command)
 
-        # logger(log, 'Stopping Instance {0}'.format(instance_id))
-        # conn.stop_instances(instance_ids=[instance_id])
+        logger(log, 'Stopping Instance {0}'.format(instance_id))
+        conn.stop_instances(instance_ids=[instance_id])
 
     if email_address:
         email_report(email_address, log, time_start)
