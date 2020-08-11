@@ -31,7 +31,7 @@ Elapsed time: {4}
         email_address,
         subject,
         "\n".join(log),
-        humanize.naturaltime(datetime.datetime.now() - time_start),
+        humanize.naturaldelta(datetime.datetime.now() - time_start),
     )
 
     p = os.popen("%s -t -i" % SENDMAIL, "w")
