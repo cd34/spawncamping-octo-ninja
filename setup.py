@@ -14,11 +14,8 @@ requires = [
     "black",
     "boto",
     "boto3",
-    "webhelpers",
+    "humanize",
 ]
-
-if sys.version_info[:3] < (2, 5, 0):
-    requires.append("pysqlite")
 
 setup(
     name="ec2bk",

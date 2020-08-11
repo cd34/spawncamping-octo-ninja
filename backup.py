@@ -2,13 +2,12 @@
 
 import configparser
 import datetime
+import humanize
 import os
 import sys
 import time
 
 import boto.ec2
-
-# from webhelpers.date import distance_of_time_in_words
 
 
 def logger(log, event):
@@ -28,9 +27,12 @@ Subject: {2}
 
 Elapsed time: {4}
 """.format(
-        email_address, email_address, subject, "\n".join(log), time_start
+        email_address,
+        email_address,
+        subject,
+        "\n".join(log),
+        humanize.naturaltime(datetime.datetime.now() - time_start),
     )
-    # distance_of_time_in_words(time_start))
 
     p = os.popen("%s -t -i" % SENDMAIL, "w")
     p.write(message)
@@ -134,7 +136,7 @@ def main():
         logger(log, "Running rsync: {0}".format(rsync_command))
         os.system(rsync_command)
 
-        logger(log, 'Stopping Instance {0}'.format(instance_id))
+        logger(log, "Stopping Instance {0}".format(instance_id))
         conn.stop_instances(instance_ids=[instance_id])
 
     if email_address:
