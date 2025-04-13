@@ -123,7 +123,6 @@ def main():
             return
         logger(log, "Waited and Started Instance {0}".format(instance_id))
 
-    print("run: ", public_dns_name, ip_address)
     if instance_running:
         rsync_command = (
             '{0} -e "ssh -o StrictHostKeyChecking=no" -aplxo '
