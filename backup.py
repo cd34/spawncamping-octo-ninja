@@ -1,44 +1,39 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import configparser
 import datetime
-import humanize
 import os
+import subprocess
 import sys
 import time
 
-import boto3.ec2
+import boto3
+import humanize
 
 
 def logger(log, event):
-    log.append("{0} - {1}".format(datetime.datetime.now().isoformat(), event))
+    log.append(f"{datetime.datetime.now().isoformat()} - {event}")
 
 
-def email_report(email_address, log, time_start):
-    SENDMAIL = config.get("backups", "sendmail")
+def email_report(config, email_address, log, time_start):
+    sendmail = config.get("backups", "sendmail")
     subject = config.get("backups", "subject")
 
-    message = """\
-From: {0}
-To: {1}
-Subject: {2}
-
-{3}
-
-Elapsed time: {4}
-""".format(
-        email_address,
-        email_address,
-        subject,
-        "\n".join(log),
-        humanize.naturaldelta(datetime.datetime.now() - time_start),
+    message = (
+        f"From: {email_address}\n"
+        f"To: {email_address}\n"
+        f"Subject: {subject}\n\n"
+        f"{'\n'.join(log)}\n\n"
+        f"Elapsed time: {humanize.naturaltime(datetime.datetime.now() - time_start)}\n"
     )
 
-    p = os.popen("%s -t -i" % SENDMAIL, "w")
-    p.write(message)
-    status = p.close()
-    if status:
-        print("Sendmail error", status)
+    result = subprocess.run(
+        [sendmail, "-t", "-i"],
+        input=message,
+        text=True,
+    )
+    if result.returncode:
+        print("Sendmail error", result.returncode)
 
 
 def get_instance(conn, instance_id):
@@ -47,32 +42,38 @@ def get_instance(conn, instance_id):
         for instance in reservation["Instances"]:
             if instance_id in instance["InstanceId"]:
                 return instance
-    return "unknown"
+    return None
 
 
 def wait_for_instance(conn, instance_id, log):
     instance = get_instance(conn, instance_id)
+    if instance is None:
+        logger(log, f"Instance {instance_id} not found")
+        return False
     if instance["State"]["Name"] == "stopped":
-        aaa = conn.start_instances(InstanceIds=[instance_id])
+        conn.start_instances(InstanceIds=[instance_id])
     loop = 0
-    while not instance["State"]["Name"] == "running":
+    while instance["State"]["Name"] != "running":
         time.sleep(10)
         loop += 1
         if loop > 10:
             logger(
                 log,
-                "Waited and Instance {0} won't "
-                "start: {1}".format(instance_id, instance["State"]["Name"]),
+                f"Waited and Instance {instance_id} won't "
+                f"start: {instance['State']['Name']}",
             )
             return False
         instance = get_instance(conn, instance_id)
+        if instance is None:
+            logger(log, f"Instance {instance_id} not found")
+            return False
     # even though status is running, machine isn't always accessible
     # immediately
     time.sleep(60)
     return True
 
 
-def main():
+def main(config):
     log = []
     time_start = datetime.datetime.now()
     email_address = config.get("backups", "email_address")
@@ -87,71 +88,70 @@ def main():
 
     instance_id = config.get("backups", "instance_id")
 
-    logger(log, "Checking to see if {0} is running".format(instance_id))
+    logger(log, f"Checking to see if {instance_id} is running")
 
     public_dns_name = ""
     ip_address = ""
     instance_running = False
     instance = get_instance(conn, instance_id)
+    if instance is None:
+        logger(log, f"Instance {instance_id} not found")
+        return
     if instance["State"]["Name"] == "running":
         public_dns_name = instance["PublicDnsName"]
         ip_address = instance["PublicIpAddress"]
         instance_running = True
         logger(
             log,
-            "Instance {0} is running\n{1} {2}".format(
-                instance_id, public_dns_name, ip_address
-            ),
+            f"Instance {instance_id} is running\n{public_dns_name} {ip_address}",
         )
     elif instance["State"]["Name"] == "stopped":
-        logger(log, "Starting Instance {0}".format(instance_id))
+        logger(log, f"Starting Instance {instance_id}")
         instance_running = wait_for_instance(conn, instance_id, log)
         if instance_running:
-            logger(log, "Spawned and Started Instance {0}".format(instance_id))
+            logger(log, f"Spawned and Started Instance {instance_id}")
             instance = get_instance(conn, instance_id)
             public_dns_name = instance["PublicDnsName"]
             ip_address = instance["PublicIpAddress"]
     else:
-        logger(log, "Waiting for Instance {0}".format(instance_id))
+        logger(log, f"Waiting for Instance {instance_id}")
         instance_running = wait_for_instance(conn, instance_id, log)
         if instance_running:
-            logger(log, "Spawned and Started Instance {0}".format(instance_id))
+            logger(log, f"Spawned and Started Instance {instance_id}")
             public_dns_name = instance["PublicDnsName"]
             ip_address = instance["PublicIpAddress"]
         else:
-            logger(log, "Couldn't Start Instance {0}".format(instance_id))
+            logger(log, f"Couldn't Start Instance {instance_id}")
             return
-        logger(log, "Waited and Started Instance {0}".format(instance_id))
+        logger(log, f"Waited and Started Instance {instance_id}")
 
     if instance_running:
-        rsync_command = (
-            '{0} -e "ssh -o StrictHostKeyChecking=no" -aplxo '
-            "--delete {1} {2}@{3}:{4}".format(
-                config.get("backups", "rsync_path"),
-                config.get("backups", "backup_source"),
-                config.get("backups", "remote_username"),
-                public_dns_name,
-                config.get("backups", "backup_dest"),
-            )
-        )
+        rsync_command = [
+            config.get("backups", "rsync_path"),
+            "-e", "ssh -o StrictHostKeyChecking=no",
+            "-aplxo",
+            "--delete",
+            config.get("backups", "backup_source"),
+            f"{config.get('backups', 'remote_username')}@{public_dns_name}:{config.get('backups', 'backup_dest')}",
+        ]
 
-        logger(log, "Running rsync: {0}".format(rsync_command))
-        os.system(rsync_command)
+        logger(log, f"Running rsync: {' '.join(rsync_command)}")
+        subprocess.run(rsync_command)
 
-    logger(log, "Stopping Instance {0}".format(instance_id))
+    logger(log, f"Stopping Instance {instance_id}")
     conn.stop_instances(InstanceIds=[instance_id])
 
     if email_address:
-        email_report(email_address, log, time_start)
+        email_report(config, email_address, log, time_start)
 
 
 if __name__ == "__main__":
     config = configparser.ConfigParser()
-    config.read_file(
-        open(os.path.join("/".join(sys.argv[0].split("/")[:-1]), "backup.cfg"))
-    )
+    config_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "backup.cfg")
+    with open(config_path) as f:
+        config.read_file(f)
 
     try:
-        main()
+        main(config)
     except KeyboardInterrupt:
         sys.exit()

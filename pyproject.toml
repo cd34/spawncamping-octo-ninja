@@ -1,0 +1,20 @@
+[project]
+name = "ec2bk"
+version = "0.0.1"
+description = "Backup machine to EC2/EBS using rsync"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["backups", "ec2", "ebs"]
+dependencies = [
+    "boto3",
+    "humanize",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"

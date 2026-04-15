@@ -3,12 +3,12 @@ spawncamping-octo-ninja
 
 Backup machine to EC2/EBS
 
-    virtualenv /usr/src/backup
+    python3 -m venv /usr/src/backup
     cd /usr/src/backup
     source bin/activate
     git clone git@github.com:cd34/spawncamping-octo-ninja.git tools
     cd tools
-    python setup.py develop
+    pip install .
     cp backup.cfg.sample backup.cfg
     edit backup.cfg and fill in appropriate values
 
